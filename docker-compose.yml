@@ -1,0 +1,101 @@
+# Définition de la version du fichier Docker Compose
+version: '3.8'
+
+# Définition des services (conteneurs) qui seront déployés
+services:
+  
+  # Service MySQL
+  mysql:
+    # Utilisation de l'image officielle MySQL version 5.7
+    image: mysql:5.7
+    
+    # Nom donné au conteneur MySQL
+    container_name: mysql-db
+    
+  
+    # Variables d'environnement pour configurer MySQL
+    environment:
+      # Mot de passe pour l'utilisateur root
+      MYSQL_ROOT_PASSWORD: rootpassword
+      # Nom de la base de données à créer
+      MYSQL_DATABASE: gestion_amphis
+      # Nom de l'utilisateur standard
+      MYSQL_USER: user
+      # Mot de passe pour l'utilisateur standard
+      MYSQL_PASSWORD: user123
+    
+    # Exposition des ports : le port 3306 de MySQL dans le conteneur est mappé au port 3307 sur la machine hôte
+    ports:
+      - "3307:3306"
+    
+    # Utilisation d'un volume Docker persistant pour stocker les données MySQL
+    volumes:
+      - mysql-data:/var/lib/mysql
+    
+    # Connexion du service à un réseau Docker interne
+    networks:
+      - app-network
+
+  # Service Backend (probablement une application Spring Boot)
+  backend:
+    # Construction de l'image Docker à partir du répertoire './backend'
+    build:
+      context: ./backend
+    
+    # Nom donné au conteneur backend
+    container_name: backend
+    
+    # Exposition des ports : le port 8080 du backend est mappé au port 8080 de l'hôte
+    ports:
+      - "8080:8080"
+    
+    # Dépendance du service backend par rapport à MySQL : MySQL doit être démarré avant le backend
+    depends_on:
+      - mysql
+    
+    # Variables d'environnement pour la configuration de la connexion à la base de données MySQL dans le backend
+    environment:
+      # URL de connexion à la base de données MySQL (adresse du conteneur MySQL avec le port 3306)
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/gestion_amphis
+      # Nom d'utilisateur pour se connecter à la base de données
+      SPRING_DATASOURCE_USERNAME: user
+      # Mot de passe pour l'utilisateur de la base de données
+      SPRING_DATASOURCE_PASSWORD: user123
+    
+    # Connexion du service au même réseau Docker interne
+    networks:
+      - app-network
+
+  # Service Frontend (probablement une application Vue.js)
+  frontend:
+    # Construction de l'image Docker à partir du répertoire './frontend'
+    build:
+      context: ./frontend
+    
+    # Nom donné au conteneur frontend
+    container_name: frontend
+    
+    # Exposition des ports : le port 8081 du frontend est mappé au port 8081 de l'hôte
+    ports:
+      - "8081:8081"
+    
+    # Dépendance du service frontend par rapport au backend : le backend doit être démarré avant le frontend
+    depends_on:
+      - backend
+    
+    # Connexion du service frontend au même réseau Docker interne
+    networks:
+      - app-network
+
+# Définition des réseaux Docker utilisés par les services
+networks:
+  app-network:
+    # Utilisation du driver de réseau 'bridge' pour la communication entre conteneurs
+    driver: bridge
+
+# Définition des volumes Docker utilisés pour persister les données
+volumes:
+  # Volume persistant pour les données MySQL
+  mysql-data:
+    # Utilisation du driver local pour le volume
+    driver: local
